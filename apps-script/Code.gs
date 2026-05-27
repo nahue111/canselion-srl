@@ -12,7 +12,7 @@
 //   5. Copiá la URL generada → pegala en Vercel como VITE_GAS_ENDPOINT
 // ─────────────────────────────────────────────────────────────────────────────
 
-var SHEET_ID   = 'TU_SHEET_ID_AQUI';   // ← reemplazar con el ID de tu Google Sheet
+var SHEET_ID   = '1ufXrnJ0cf5jeceeDaZBebxg2o6-I5gMxqF5_mrKJEyE';
 var SHEET_NAME = 'Registros';           // nombre de la hoja (pestaña)
 
 // Columnas en orden

@@ -18,8 +18,8 @@ function leerUTMs() {
 
 function celularValido(cel) {
   const d = cel.replace(/\D/g, '');
-  // Uruguay: 09XXXXXXX (9 dígitos) o con prefijo 598 (11 dígitos)
-  return d.length >= 8 && d.length <= 11;
+  // Uruguay: 09XXXXXXX (9 dígitos) o con prefijo 598 (11-12 dígitos)
+  return d.length === 9 || d.length === 11 || d.length === 12;
 }
 
 // ── Sub-componentes ───────────────────────────────────────────────────────────
@@ -176,6 +176,8 @@ export default function Registros() {
     const errs = {};
     if (!datos.nombre.trim())
       errs.nombre = 'Ingresá tu nombre y apellido.';
+    else if (!datos.nombre.trim().includes(' '))
+      errs.nombre = 'Ingresá nombre y apellido separados por un espacio.';
     if (!datos.celular.trim())
       errs.celular = 'Ingresá tu número de celular.';
     else if (!celularValido(datos.celular))
@@ -248,13 +250,13 @@ export default function Registros() {
           {paso === 0 && (
             <div key="paso0" className="step-in">
               <h1 className="text-xl font-bold text-slate-900 mb-1.5 leading-snug">
-                ¿Ya sos socio/a de la cooperativa?
+                ¿Sos socio/a de la Cooperativa de la Previsión Social?
               </h1>
               <p className="text-slate-400 text-sm mb-6">
                 Elegí la opción que mejor describe tu situación.
               </p>
               <div className="flex flex-col gap-3">
-                {['Sí', 'No, quiero asociarme', 'Quiero consultar'].map(op => (
+                {['Sí', 'No'].map(op => (
                   <BtnOpcion
                     key={op}
                     label={op}
@@ -276,7 +278,7 @@ export default function Registros() {
                 Esta información ayuda al asesor a orientarte mejor.
               </p>
               <div className="flex flex-col gap-3">
-                {['Jubilado/a', 'Pensionista', 'Otro'].map(op => (
+                {['Jubilado/a', 'Pensionista'].map(op => (
                   <BtnOpcion
                     key={op}
                     label={op}
@@ -315,13 +317,32 @@ export default function Registros() {
                   onChange={actualizar('celular')}
                   error={errores.celular}
                 />
-                <CampoTexto
-                  label="Localidad / Departamento"
-                  placeholder="Ej: Montevideo, Canelones, Salto..."
-                  value={datos.localidad}
-                  onChange={actualizar('localidad')}
-                  error={errores.localidad}
-                />
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Localidad / Departamento</label>
+                  <select
+                    value={datos.localidad}
+                    onChange={actualizar('localidad')}
+                    className={`w-full border-2 rounded-xl px-4 py-3.5 text-base outline-none transition-colors appearance-none ${
+                      errores.localidad
+                        ? 'border-red-400 bg-red-50 text-slate-800'
+                        : datos.localidad
+                        ? 'border-slate-200 focus:border-sky-400 bg-white text-slate-800'
+                        : 'border-slate-200 focus:border-sky-400 bg-white text-slate-400'
+                    }`}
+                  >
+                    <option value="" disabled>Elegí tu departamento</option>
+                    <option value="Montevideo">Montevideo</option>
+                    <option value="San José">San José</option>
+                    <option value="Canelones">Canelones</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                  {errores.localidad && (
+                    <p className="flex items-center gap-1.5 text-red-500 text-sm mt-1.5">
+                      <AlertCircle size={13} className="shrink-0" />
+                      {errores.localidad}
+                    </p>
+                  )}
+                </div>
 
                 {/* Consentimiento */}
                 <div>

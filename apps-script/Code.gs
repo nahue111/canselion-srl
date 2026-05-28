@@ -24,6 +24,7 @@ var COLUMNAS = [
   'Localidad / Departamento',
   '¿Ya es socio/a?',
   'Situación',
+  '¿Qué buscás?',
   'Consentimiento aceptado',
   'Origen del lead',
   'UTM Source',
@@ -76,6 +77,8 @@ function validarDatos(data) {
   if (celular.length !== 9 || celular.substring(0, 2) !== '09')     return false;
   if (['Sí', 'No'].indexOf(esSocio) === -1)                         return false;
   if (['Jubilado/a', 'Pensionista'].indexOf(situacion) === -1)      return false;
+  var busqueda = (data.busqueda || '').trim();
+  if (['Préstamo en efectivo', 'Electrodoméstico', 'Servicios médicos y odontológicos'].indexOf(busqueda) === -1) return false;
   if (data.consentimiento !== 'Sí')                                  return false;
   return true;
 }
@@ -143,6 +146,7 @@ function doPost(e) {
       sanitizar(data.localidad),
       sanitizar(data.esSocio),
       sanitizar(data.situacion),
+      sanitizar(data.busqueda),
       sanitizar(data.consentimiento),
       sanitizar(data.origen) || 'Directo',
       sanitizar(data.utmSource),

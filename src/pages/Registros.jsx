@@ -24,11 +24,11 @@ function celularValido(cel) {
 // ── Sub-componentes ───────────────────────────────────────────────────────────
 
 function BarraProgreso({ paso }) {
-  const pct = ((paso + 1) / 3) * 100;
+  const pct = ((paso + 1) / 4) * 100;
   return (
     <div className="mb-8">
       <div className="flex justify-between mb-2">
-        <span className="text-sm font-medium text-slate-400">Paso {paso + 1} de 3</span>
+        <span className="text-sm font-medium text-slate-400">Paso {paso + 1} de 4</span>
         <span className="text-sm text-slate-300">{Math.round(pct)}%</span>
       </div>
       <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -145,6 +145,7 @@ export default function Registros() {
   const [datos, setDatos] = useState({
     esSocio:       '',
     situacion:     '',
+    busqueda:      '',
     nombre:        '',
     celular:       '',
     localidad:     '',
@@ -165,7 +166,7 @@ export default function Registros() {
 
   // Renderiza el widget cuando llega al paso 2, lo limpia al salir
   useEffect(() => {
-    if (paso !== 2) {
+    if (paso !== 3) {
       if (widgetIdRef.current !== null && window.turnstile) {
         try { window.turnstile.remove(widgetIdRef.current); } catch (_) {}
         widgetIdRef.current = null;
@@ -174,7 +175,7 @@ export default function Registros() {
       return;
     }
     const tryRender = () => {
-      if (!containerRef.current || widgetIdRef.current !== null || !TURNSTILE_SITE_KEY) return;
+      if (paso !== 3 || !containerRef.current || widgetIdRef.current !== null || !TURNSTILE_SITE_KEY) return;
       if (!window.turnstile) return;
       widgetIdRef.current = window.turnstile.render(containerRef.current, {
         sitekey:            TURNSTILE_SITE_KEY,
@@ -245,6 +246,7 @@ export default function Registros() {
       utmCampaign: utms.utmCampaign || '',
       utmAd:       utms.utmAd       || '',
       utmContent:     utms.utmContent  || '',
+      busqueda:       datos.busqueda,
       turnstileToken: turnstileToken,
       apiSecret:      API_SECRET,
     };
@@ -329,8 +331,30 @@ export default function Registros() {
             </div>
           )}
 
-          {/* ── Paso 2: Datos de contacto ─────────────────────────────── */}
+          {/* ── Paso 2: ¿Qué buscás? ─────────────────────────────────── */}
           {paso === 2 && (
+            <div key="paso2" className="step-in">
+              <h1 className="text-xl font-bold text-slate-900 mb-1.5 leading-snug">
+                ¿Qué buscás?
+              </h1>
+              <p className="text-slate-400 text-sm mb-6">
+                Elegí la opción que mejor describe tu interés.
+              </p>
+              <div className="flex flex-col gap-3">
+                {['Préstamo en efectivo', 'Electrodoméstico', 'Servicios médicos y odontológicos'].map(op => (
+                  <BtnOpcion
+                    key={op}
+                    label={op}
+                    seleccionado={datos.busqueda === op}
+                    onClick={() => elegir('busqueda', op)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Paso 3: Datos de contacto ─────────────────────────────── */}
+          {paso === 3 && (
             <div key="paso2" className="step-in">
               <h1 className="text-xl font-bold text-slate-900 mb-1.5 leading-snug">
                 ¿Cómo te contactamos?

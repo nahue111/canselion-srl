@@ -49,7 +49,7 @@ function BtnOpcion({ label, seleccionado, onClick }) {
       className={`w-full text-left px-5 py-4 rounded-2xl border-2 text-base font-medium transition-all duration-150 active:scale-[0.97] min-h-[60px] ${
         seleccionado
           ? 'bg-sky-600 border-sky-600 text-white shadow-lg shadow-sky-100'
-          : 'bg-white border-slate-200 text-slate-700 hover:border-sky-400 hover:bg-sky-50 hover:text-sky-700'
+          : 'bg-white border-slate-200 text-slate-700 [&:hover]:border-sky-400 [&:hover]:bg-sky-50 [&:hover]:text-sky-700 [-webkit-tap-highlight-color:transparent]'
       }`}
     >
       {label}
@@ -198,6 +198,7 @@ export default function Registros() {
     if (avanzando) return;
     setDatos(prev => ({ ...prev, [campo]: valor }));
     setAvanzando(true);
+    document.activeElement?.blur();
     setTimeout(() => {
       setPaso(p => p + 1);
       setAvanzando(false);
@@ -491,6 +492,12 @@ export default function Registros() {
         Esta página es propiedad de Canselion SRL. Los datos ingresados son
         confidenciales y se utilizan exclusivamente para brindar información
         sobre la cooperativa.
+      </p>
+      <p className="mt-2 text-slate-400 text-xs text-center max-w-xs leading-relaxed">
+        Este sitio está protegido por Cloudflare Turnstile. Aplica el{' '}
+        <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-500">
+          aviso de privacidad de Cloudflare
+        </a>.
       </p>
     </div>
   );

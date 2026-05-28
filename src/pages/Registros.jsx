@@ -18,8 +18,7 @@ function leerUTMs() {
 
 function celularValido(cel) {
   const d = cel.replace(/\D/g, '');
-  // Uruguay: 09XXXXXXX (9 dígitos) o con prefijo 598 (11-12 dígitos)
-  return d.length === 9 || d.length === 11 || d.length === 12;
+  return d.length === 9 && d.startsWith('09');
 }
 
 // ── Sub-componentes ───────────────────────────────────────────────────────────
@@ -181,7 +180,7 @@ export default function Registros() {
     if (!datos.celular.trim())
       errs.celular = 'Ingresá tu número de celular.';
     else if (!celularValido(datos.celular))
-      errs.celular = 'El número no parece válido. Ejemplo: 099 000 000';
+      errs.celular = 'Ingresá un celular uruguayo válido. Ejemplo: 099 000 000';
     if (!datos.localidad.trim())
       errs.localidad = 'Ingresá tu localidad o departamento.';
     if (!datos.consentimiento)

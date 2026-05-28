@@ -46,10 +46,11 @@ function BtnOpcion({ label, seleccionado, onClick }) {
     <button
       type="button"
       onClick={onClick}
+      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
       className={`w-full text-left px-5 py-4 rounded-2xl border-2 text-base font-medium transition-all duration-150 active:scale-[0.97] min-h-[60px] ${
         seleccionado
           ? 'bg-sky-600 border-sky-600 text-white shadow-lg shadow-sky-100'
-          : 'bg-white border-slate-200 text-slate-700 [&:hover]:border-sky-400 [&:hover]:bg-sky-50 [&:hover]:text-sky-700 [-webkit-tap-highlight-color:transparent]'
+          : 'bg-white border-slate-200 text-slate-700 [@media(hover:hover)]:hover:border-sky-400 [@media(hover:hover)]:hover:bg-sky-50 [@media(hover:hover)]:hover:text-sky-700'
       }`}
     >
       {label}

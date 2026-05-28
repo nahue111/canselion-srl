@@ -12,10 +12,9 @@
 //   5. Copiá la URL generada → pegala en Vercel como VITE_GAS_ENDPOINT
 // ─────────────────────────────────────────────────────────────────────────────
 
-var SHEET_ID          = '1ufXrnJ0cf5jeceeDaZBebxg2o6-I5gMxqF5_mrKJEyE';
-var SHEET_NAME        = 'Registros';
-// Secret guardado en Apps Script Properties (nunca en el código)
-// Para configurarlo: Configuración del proyecto → Propiedades del script → TURNSTILE_SECRET           // nombre de la hoja (pestaña)
+var SHEET_ID      = '1ufXrnJ0cf5jeceeDaZBebxg2o6-I5gMxqF5_mrKJEyE';
+var SHEET_NAME    = 'Registros';
+var MAX_POR_HORA  = 60;
 
 // Columnas en orden
 var COLUMNAS = [
@@ -36,21 +35,49 @@ var COLUMNAS = [
   'Observaciones',
 ];
 
-function verificarTurnstile(token) {
-  if (!token) return false;
+// Verifica que el request venga del formulario (clave guardada en PropertiesService)
+function verificarApiKey(key) {
+  var stored = PropertiesService.getScriptProperties().getProperty('API_SECRET');
+  if (!stored || !key) return false;
+  return stored === key;
+}
+
+// Limita a MAX_POR_HORA envíos por hora usando LockService para evitar race conditions
+function verificarRateLimit() {
+  var lock = LockService.getScriptLock();
   try {
-    var secret = PropertiesService.getScriptProperties().getProperty('TURNSTILE_SECRET');
-    if (!secret) return false;
-    var resp = UrlFetchApp.fetch('https://challenges.cloudflare.com/turnstile/v1/siteverify', {
-      method:            'post',
-      contentType:       'application/json',
-      payload:           JSON.stringify({ secret: secret, response: token }),
-      muteHttpExceptions: true,
-    });
-    return JSON.parse(resp.getContentText()).success === true;
+    lock.waitLock(3000);
+    var props = PropertiesService.getScriptProperties();
+    var raw   = props.getProperty('RATE_LIMIT') || '{}';
+    var rl    = JSON.parse(raw);
+    var ahora = Date.now();
+    if (!rl.resetAt || ahora > rl.resetAt) {
+      rl = { count: 1, resetAt: ahora + 3600000 };
+    } else {
+      rl.count = (rl.count || 0) + 1;
+    }
+    props.setProperty('RATE_LIMIT', JSON.stringify(rl));
+    return rl.count <= MAX_POR_HORA;
   } catch (e) {
-    return false;
+    return true;
+  } finally {
+    try { lock.releaseLock(); } catch (_) {}
   }
+}
+
+// Valida que los campos obligatorios tengan valores esperados
+function validarDatos(data) {
+  var nombre    = (data.nombre    || '').trim();
+  var celular   = (data.celular   || '').replace(/\D/g, '');
+  var esSocio   = (data.esSocio   || '').trim();
+  var situacion = (data.situacion || '').trim();
+
+  if (!nombre || nombre.length > 120 || nombre.indexOf(' ') === -1) return false;
+  if (celular.length !== 9 || celular.substring(0, 2) !== '09')     return false;
+  if (['Sí', 'No'].indexOf(esSocio) === -1)                         return false;
+  if (['Jubilado/a', 'Pensionista'].indexOf(situacion) === -1)      return false;
+  if (data.consentimiento !== 'Sí')                                  return false;
+  return true;
 }
 
 function sanitizar(val) {
@@ -63,15 +90,36 @@ function doPost(e) {
     var raw  = (e.postData && e.postData.contents) ? e.postData.contents : '{}';
     var data = JSON.parse(raw);
 
-    var ss    = SpreadsheetApp.openById(SHEET_ID);
-    var hoja  = ss.getSheetByName(SHEET_NAME);
+    // Debug temporal: guarda info de la clave recibida para diagnóstico
+    var props = PropertiesService.getScriptProperties();
+    props.setProperty('DBG_LEN',    (data.apiSecret || '').length.toString());
+    props.setProperty('DBG_FIRST4', (data.apiSecret || '').substring(0, 4));
 
-    // Si la hoja no existe la crea
+    if (!verificarApiKey(data.apiSecret)) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ ok: false, error: 'Unauthorized' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (!verificarRateLimit()) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ ok: false, error: 'Rate limit exceeded' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (!validarDatos(data)) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ ok: false, error: 'Invalid data' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var ss   = SpreadsheetApp.openById(SHEET_ID);
+    var hoja = ss.getSheetByName(SHEET_NAME);
+
     if (!hoja) {
       hoja = ss.insertSheet(SHEET_NAME);
     }
 
-    // Agrega encabezados si la hoja está vacía
     if (hoja.getLastRow() === 0) {
       hoja.appendRow(COLUMNAS);
       hoja.getRange(1, 1, 1, COLUMNAS.length)
@@ -83,7 +131,6 @@ function doPost(e) {
       hoja.getRange(2, 3, 10000, 1).setNumberFormat('@');
     }
 
-    // Detectar celular duplicado comparando dígitos solamente
     var celularNuevo = (data.celular || '').replace(/\D/g, '');
     var esDuplicado  = false;
     var ultimaFila   = hoja.getLastRow();
@@ -94,7 +141,6 @@ function doPost(e) {
       });
     }
 
-    // Nueva fila de datos
     hoja.appendRow([
       sanitizar(data.fecha),
       sanitizar(data.nombre),
@@ -113,7 +159,6 @@ function doPost(e) {
       '',
     ]);
 
-    // Si es duplicado, pintá toda la fila de rojo
     if (esDuplicado) {
       hoja.getRange(hoja.getLastRow(), 1, 1, COLUMNAS.length)
         .setBackground('#fecaca');
@@ -135,4 +180,12 @@ function doGet() {
   return ContentService
     .createTextOutput(JSON.stringify({ ok: true, msg: 'Apps Script activo · Canselion SRL' }))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// Lee el debug de la última solicitud recibida
+function testUltimoRecibido() {
+  var props = PropertiesService.getScriptProperties();
+  Logger.log('Recibido largo: '     + props.getProperty('DBG_LEN'));
+  Logger.log('Recibido primeros 4: ' + props.getProperty('DBG_FIRST4'));
+  Logger.log('Guardado primeros 4: ' + (props.getProperty('API_SECRET') || '').substring(0, 4));
 }

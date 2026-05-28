@@ -128,6 +128,7 @@ function Logo() {
 
 const ENDPOINT            = import.meta.env.VITE_GAS_ENDPOINT;
 const TURNSTILE_SITE_KEY  = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+const API_SECRET          = import.meta.env.VITE_API_SECRET || '';
 
 export default function Registros() {
   const [paso, setPaso]           = useState(0);
@@ -245,6 +246,7 @@ export default function Registros() {
       utmAd:       utms.utmAd       || '',
       utmContent:     utms.utmContent  || '',
       turnstileToken: turnstileToken,
+      apiSecret:      API_SECRET,
     };
 
     try {

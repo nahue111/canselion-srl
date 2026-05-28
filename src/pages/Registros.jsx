@@ -58,7 +58,7 @@ function BtnOpcion({ label, seleccionado, onClick }) {
   );
 }
 
-function CampoTexto({ label, type = 'text', placeholder, value, onChange, error, inputMode }) {
+function CampoTexto({ label, type = 'text', placeholder, value, onChange, error, inputMode, maxLength }) {
   return (
     <div>
       <label className="block text-sm font-semibold text-slate-700 mb-1.5">{label}</label>
@@ -68,6 +68,7 @@ function CampoTexto({ label, type = 'text', placeholder, value, onChange, error,
         placeholder={placeholder}
         value={value}
         onChange={onChange}
+        maxLength={maxLength}
         autoComplete="off"
         className={`w-full border-2 rounded-xl px-4 py-3.5 text-base text-slate-800 placeholder:text-slate-300 outline-none transition-colors ${
           error
@@ -376,11 +377,12 @@ export default function Registros() {
                 <CampoTexto
                   label="Celular"
                   type="tel"
-                  inputMode="tel"
-                  placeholder="Ej: 099 000 000"
+                  inputMode="numeric"
+                  placeholder="Ej: 099000000"
                   value={datos.celular}
                   onChange={actualizar('celular')}
                   error={errores.celular}
+                  maxLength={9}
                 />
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">Localidad / Departamento</label>

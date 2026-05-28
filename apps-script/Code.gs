@@ -90,11 +90,6 @@ function doPost(e) {
     var raw  = (e.postData && e.postData.contents) ? e.postData.contents : '{}';
     var data = JSON.parse(raw);
 
-    // Debug temporal: guarda info de la clave recibida para diagnóstico
-    var props = PropertiesService.getScriptProperties();
-    props.setProperty('DBG_LEN',    (data.apiSecret || '').length.toString());
-    props.setProperty('DBG_FIRST4', (data.apiSecret || '').substring(0, 4));
-
     if (!verificarApiKey(data.apiSecret)) {
       return ContentService
         .createTextOutput(JSON.stringify({ ok: false, error: 'Unauthorized' }))
@@ -182,10 +177,3 @@ function doGet() {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// Lee el debug de la última solicitud recibida
-function testUltimoRecibido() {
-  var props = PropertiesService.getScriptProperties();
-  Logger.log('Recibido largo: '     + props.getProperty('DBG_LEN'));
-  Logger.log('Recibido primeros 4: ' + props.getProperty('DBG_FIRST4'));
-  Logger.log('Guardado primeros 4: ' + (props.getProperty('API_SECRET') || '').substring(0, 4));
-}

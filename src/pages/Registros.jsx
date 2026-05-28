@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { CheckCircle, AlertCircle, Loader2, ChevronLeft } from 'lucide-react';
+import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -477,17 +477,6 @@ export default function Registros() {
           )}
         </div>
 
-        {/* Botón volver */}
-        {paso > 0 && (
-          <button
-            type="button"
-            onClick={() => setPaso(p => p - 1)}
-            className="mt-3 w-full flex items-center justify-center gap-1.5 text-slate-400 hover:text-slate-600 text-sm py-2.5 transition-colors"
-          >
-            <ChevronLeft size={15} />
-            Volver
-          </button>
-        )}
       </div>
 
       {/* Pie */}

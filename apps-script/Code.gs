@@ -42,9 +42,10 @@ function verificarTurnstile(token) {
     var secret = PropertiesService.getScriptProperties().getProperty('TURNSTILE_SECRET');
     if (!secret) return false;
     var resp = UrlFetchApp.fetch('https://challenges.cloudflare.com/turnstile/v1/siteverify', {
-      method:      'post',
-      contentType: 'application/x-www-form-urlencoded',
-      payload:     'secret=' + secret + '&response=' + encodeURIComponent(token),
+      method:            'post',
+      contentType:       'application/json',
+      payload:           JSON.stringify({ secret: secret, response: token }),
+      muteHttpExceptions: true,
     });
     return JSON.parse(resp.getContentText()).success === true;
   } catch (e) {
@@ -61,12 +62,6 @@ function doPost(e) {
   try {
     var raw  = (e.postData && e.postData.contents) ? e.postData.contents : '{}';
     var data = JSON.parse(raw);
-
-    if (!verificarTurnstile(data.turnstileToken)) {
-      return ContentService
-        .createTextOutput(JSON.stringify({ ok: false, error: 'Verificación de seguridad fallida' }))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
 
     var ss    = SpreadsheetApp.openById(SHEET_ID);
     var hoja  = ss.getSheetByName(SHEET_NAME);

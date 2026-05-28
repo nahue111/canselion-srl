@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { CheckCircle, AlertCircle, Loader2, ChevronLeft } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -126,16 +126,20 @@ function Logo() {
 
 // ── Página principal ──────────────────────────────────────────────────────────
 
-const ENDPOINT = import.meta.env.VITE_GAS_ENDPOINT;
+const ENDPOINT            = import.meta.env.VITE_GAS_ENDPOINT;
+const TURNSTILE_SITE_KEY  = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
 export default function Registros() {
-  const [paso, setPaso]       = useState(0);
+  const [paso, setPaso]           = useState(0);
   const [avanzando, setAvanzando] = useState(false);
-  const [enviado, setEnviado] = useState(false);
-  const [cargando, setCargando] = useState(false);
+  const [enviado, setEnviado]     = useState(false);
+  const [cargando, setCargando]   = useState(false);
   const [errorEnvio, setErrorEnvio] = useState('');
-  const [utms, setUtms]       = useState({});
-  const [errores, setErrores] = useState({});
+  const [utms, setUtms]           = useState({});
+  const [errores, setErrores]     = useState({});
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const containerRef = useRef(null);
+  const widgetIdRef  = useRef(null);
 
   const [datos, setDatos] = useState({
     esSocio:       '',
@@ -148,7 +152,40 @@ export default function Registros() {
 
   useEffect(() => {
     setUtms(leerUTMs());
+    // Carga el script de Turnstile una sola vez
+    if (!document.getElementById('cf-ts')) {
+      const s = document.createElement('script');
+      s.id  = 'cf-ts';
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      s.async = true;
+      document.head.appendChild(s);
+    }
   }, []);
+
+  // Renderiza el widget cuando llega al paso 2, lo limpia al salir
+  useEffect(() => {
+    if (paso !== 2) {
+      if (widgetIdRef.current !== null && window.turnstile) {
+        try { window.turnstile.remove(widgetIdRef.current); } catch (_) {}
+        widgetIdRef.current = null;
+      }
+      setTurnstileToken('');
+      return;
+    }
+    const tryRender = () => {
+      if (!containerRef.current || widgetIdRef.current !== null || !TURNSTILE_SITE_KEY) return;
+      if (!window.turnstile) return;
+      widgetIdRef.current = window.turnstile.render(containerRef.current, {
+        sitekey:            TURNSTILE_SITE_KEY,
+        callback:           setTurnstileToken,
+        'expired-callback': () => setTurnstileToken(''),
+        'error-callback':   () => setTurnstileToken(''),
+      });
+    };
+    if (window.turnstile) { tryRender(); return; }
+    const t = setInterval(() => { if (window.turnstile) { tryRender(); clearInterval(t); } }, 100);
+    return () => clearInterval(t);
+  }, [paso]);
 
   // Scroll al top cuando cambia el paso
   useEffect(() => {
@@ -206,7 +243,8 @@ export default function Registros() {
       utmSource:   utms.utmSource   || '',
       utmCampaign: utms.utmCampaign || '',
       utmAd:       utms.utmAd       || '',
-      utmContent:  utms.utmContent  || '',
+      utmContent:     utms.utmContent  || '',
+      turnstileToken: turnstileToken,
     };
 
     try {
@@ -383,10 +421,13 @@ export default function Registros() {
                 </div>
               )}
 
+              {/* Widget invisible de Turnstile */}
+              <div ref={containerRef} className="flex justify-center mt-2" />
+
               <button
                 type="button"
                 onClick={enviar}
-                disabled={cargando}
+                disabled={cargando || (TURNSTILE_SITE_KEY && !turnstileToken)}
                 className="mt-6 w-full bg-sky-600 hover:bg-sky-500 disabled:bg-sky-300 disabled:cursor-not-allowed text-white font-bold text-base py-4 rounded-2xl transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-2 shadow-lg shadow-sky-100"
               >
                 {cargando ? (

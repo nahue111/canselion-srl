@@ -14,7 +14,8 @@
 
 var SHEET_ID          = '1ufXrnJ0cf5jeceeDaZBebxg2o6-I5gMxqF5_mrKJEyE';
 var SHEET_NAME        = 'Registros';
-var TURNSTILE_SECRET  = 'REMOVED_SECRET';           // nombre de la hoja (pestaña)
+// Secret guardado en Apps Script Properties (nunca en el código)
+// Para configurarlo: Configuración del proyecto → Propiedades del script → TURNSTILE_SECRET           // nombre de la hoja (pestaña)
 
 // Columnas en orden
 var COLUMNAS = [
@@ -38,10 +39,12 @@ var COLUMNAS = [
 function verificarTurnstile(token) {
   if (!token) return false;
   try {
+    var secret = PropertiesService.getScriptProperties().getProperty('TURNSTILE_SECRET');
+    if (!secret) return false;
     var resp = UrlFetchApp.fetch('https://challenges.cloudflare.com/turnstile/v1/siteverify', {
       method:      'post',
       contentType: 'application/x-www-form-urlencoded',
-      payload:     'secret=' + TURNSTILE_SECRET + '&response=' + encodeURIComponent(token),
+      payload:     'secret=' + secret + '&response=' + encodeURIComponent(token),
     });
     return JSON.parse(resp.getContentText()).success === true;
   } catch (e) {

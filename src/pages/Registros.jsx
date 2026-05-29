@@ -88,7 +88,33 @@ function CampoTexto({ label, type = 'text', placeholder, value, onChange, error,
 
 // ── Pantalla de éxito ─────────────────────────────────────────────────────────
 
-function PantallaExito() {
+function PantallaExito({ esSocio }) {
+  if (esSocio) {
+    return (
+      <div className="min-h-[100dvh] bg-slate-50 flex flex-col items-center justify-center px-4 py-12 text-center">
+        <Logo />
+        <div className="mt-6 w-full max-w-sm bg-white rounded-2xl shadow-lg shadow-slate-200/60 border border-slate-100 px-8 py-12">
+          <div className="flex justify-center mb-6">
+            <div className="h-16 w-16 bg-amber-50 rounded-full flex items-center justify-center border-2 border-amber-100">
+              <AlertCircle size={34} className="text-amber-500" strokeWidth={2} />
+            </div>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 mb-3 leading-tight">
+            Gracias por tu interés.
+          </h1>
+          <p className="text-slate-500 leading-relaxed text-base">
+            Nuestros servicios están orientados exclusivamente a personas que
+            aún no son socias de la Cooperativa de la Previsión Social.
+            Por ese motivo, no podemos continuar con tu solicitud en este momento.
+          </p>
+        </div>
+        <p className="mt-8 text-slate-400 text-xs">
+          Canselion SRL · Servicios para cooperativas
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-[100dvh] bg-slate-50 flex flex-col items-center justify-center px-4 py-12 text-center">
       <Logo />
@@ -135,7 +161,8 @@ const API_SECRET          = import.meta.env.VITE_API_SECRET || '';
 export default function Registros() {
   const [paso, setPaso]           = useState(0);
   const [avanzando, setAvanzando] = useState(false);
-  const [enviado, setEnviado]     = useState(false);
+  const [enviado, setEnviado]       = useState(false);
+  const [esSocioEnviado, setEsSocioEnviado] = useState(false);
   const [cargando, setCargando]   = useState(false);
   const [errorEnvio, setErrorEnvio] = useState('');
   const [utms, setUtms]           = useState({});
@@ -262,6 +289,7 @@ export default function Registros() {
         body:     JSON.stringify(payload),
         mode:     'no-cors',
       });
+      setEsSocioEnviado(datos.esSocio === 'Sí');
       setEnviado(true);
     } catch {
       setErrorEnvio('No pudimos guardar tu consulta. Por favor intentá nuevamente.');
@@ -272,7 +300,7 @@ export default function Registros() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  if (enviado) return <PantallaExito />;
+  if (enviado) return <PantallaExito esSocio={esSocioEnviado} />;
 
   return (
     <div className="min-h-[100dvh] bg-slate-50 flex flex-col items-center px-4 py-10">

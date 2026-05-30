@@ -21,6 +21,11 @@ function celularValido(cel) {
   return d.length === 9 && d.startsWith('09');
 }
 
+function cedulaValida(ced) {
+  const d = ced.replace(/\D/g, '');
+  return d.length >= 7 && d.length <= 8;
+}
+
 // ── Sub-componentes ───────────────────────────────────────────────────────────
 
 function BarraProgreso({ paso }) {
@@ -154,48 +159,48 @@ function Logo() {
 
 // ── Página principal ──────────────────────────────────────────────────────────
 
-const ENDPOINT            = import.meta.env.VITE_GAS_ENDPOINT;
-const TURNSTILE_SITE_KEY  = import.meta.env.VITE_TURNSTILE_SITE_KEY;
-const API_SECRET          = import.meta.env.VITE_API_SECRET || '';
+const ENDPOINT           = import.meta.env.VITE_GAS_ENDPOINT;
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+const API_SECRET         = import.meta.env.VITE_API_SECRET || '';
 
 export default function Registros() {
-  const [paso, setPaso]           = useState(0);
-  const [avanzando, setAvanzando] = useState(false);
-  const [enviado, setEnviado]       = useState(false);
+  const [paso, setPaso]                     = useState(0);
+  const [avanzando, setAvanzando]           = useState(false);
+  const [enviado, setEnviado]               = useState(false);
   const [esSocioEnviado, setEsSocioEnviado] = useState(false);
-  const [cargando, setCargando]   = useState(false);
-  const [errorEnvio, setErrorEnvio] = useState('');
-  const [utms, setUtms]           = useState({});
-  const [errores, setErrores]     = useState({});
+  const [cargando, setCargando]             = useState(false);
+  const [errorEnvio, setErrorEnvio]         = useState('');
+  const [utms, setUtms]                     = useState({});
+  const [errores, setErrores]               = useState({});
   const [turnstileToken, setTurnstileToken] = useState('');
   const containerRef = useRef(null);
   const widgetIdRef  = useRef(null);
 
   const [datos, setDatos] = useState({
-    esSocio:       '',
-    situacion:     '',
-    busqueda:      '',
-    nombre:        '',
-    celular:       '',
-    localidad:     '',
+    situacion:      '',
+    busqueda:       '',
+    nombre:         '',
+    celular:        '',
+    cedula:         '',
+    localidad:      '',
+    esSocio:        '',
     consentimiento: false,
   });
 
   useEffect(() => {
     setUtms(leerUTMs());
-    // Carga el script de Turnstile una sola vez
     if (!document.getElementById('cf-ts')) {
       const s = document.createElement('script');
-      s.id  = 'cf-ts';
-      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      s.id    = 'cf-ts';
+      s.src   = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
       s.async = true;
       document.head.appendChild(s);
     }
   }, []);
 
-  // Renderiza el widget cuando llega al paso 2, lo limpia al salir
+  // Turnstile en paso 2 (formulario de datos)
   useEffect(() => {
-    if (paso !== 3) {
+    if (paso !== 2) {
       if (widgetIdRef.current !== null && window.turnstile) {
         try { window.turnstile.remove(widgetIdRef.current); } catch (_) {}
         widgetIdRef.current = null;
@@ -204,7 +209,7 @@ export default function Registros() {
       return;
     }
     const tryRender = () => {
-      if (paso !== 3 || !containerRef.current || widgetIdRef.current !== null || !TURNSTILE_SITE_KEY) return;
+      if (paso !== 2 || !containerRef.current || widgetIdRef.current !== null || !TURNSTILE_SITE_KEY) return;
       if (!window.turnstile) return;
       widgetIdRef.current = window.turnstile.render(containerRef.current, {
         sitekey:            TURNSTILE_SITE_KEY,
@@ -218,7 +223,6 @@ export default function Registros() {
     return () => clearInterval(t);
   }, [paso]);
 
-  // Scroll al top cuando cambia el paso
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [paso]);
@@ -250,6 +254,10 @@ export default function Registros() {
       errs.celular = 'Ingresá tu número de celular.';
     else if (!celularValido(datos.celular))
       errs.celular = 'Ingresá un celular uruguayo válido. Ejemplo: 099 000 000';
+    if (!datos.cedula.trim())
+      errs.cedula = 'Ingresá tu número de cédula.';
+    else if (!cedulaValida(datos.cedula))
+      errs.cedula = 'Ingresá una cédula uruguaya válida (7 u 8 dígitos).';
     if (!datos.localidad.trim())
       errs.localidad = 'Ingresá tu localidad o departamento.';
     if (!datos.consentimiento)
@@ -258,44 +266,70 @@ export default function Registros() {
     return Object.keys(errs).length === 0;
   };
 
-  const enviar = async () => {
+  // Primer envío: guarda todos los datos personales (sin esSocio)
+  const enviarDatos = async () => {
     if (!validar()) return;
     setCargando(true);
     setErrorEnvio('');
 
     const payload = {
-      fecha:       new Date().toLocaleString('es-UY', { timeZone: 'America/Montevideo' }),
-      nombre:      datos.nombre.trim(),
-      celular:     datos.celular.trim(),
-      localidad:   datos.localidad.trim(),
-      esSocio:     datos.esSocio,
-      situacion:   datos.situacion,
-      consentimiento: 'Sí',
-      origen:      utms.origen   || 'Directo',
-      utmSource:   utms.utmSource   || '',
-      utmCampaign: utms.utmCampaign || '',
-      utmAd:       utms.utmAd       || '',
-      utmContent:     utms.utmContent  || '',
+      tipo:           'registro',
+      fecha:          new Date().toLocaleString('es-UY', { timeZone: 'America/Montevideo' }),
+      nombre:         datos.nombre.trim(),
+      celular:        datos.celular.trim(),
+      cedula:         datos.cedula.trim(),
+      localidad:      datos.localidad,
+      situacion:      datos.situacion,
       busqueda:       datos.busqueda,
+      consentimiento: 'Sí',
+      origen:         utms.origen      || 'Directo',
+      utmSource:      utms.utmSource   || '',
+      utmCampaign:    utms.utmCampaign || '',
+      utmAd:          utms.utmAd       || '',
+      utmContent:     utms.utmContent  || '',
       turnstileToken: turnstileToken,
       apiSecret:      API_SECRET,
     };
 
     try {
-      // Content-Type text/plain evita el preflight OPTIONS (CORS issue con Apps Script)
       await fetch(ENDPOINT, {
-        method:   'POST',
-        headers:  { 'Content-Type': 'text/plain;charset=utf-8' },
-        body:     JSON.stringify(payload),
-        mode:     'no-cors',
+        method:  'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body:    JSON.stringify(payload),
+        mode:    'no-cors',
       });
-      setEsSocioEnviado(datos.esSocio === 'Sí');
-      setEnviado(true);
+      setPaso(3);
     } catch {
       setErrorEnvio('No pudimos guardar tu consulta. Por favor intentá nuevamente.');
     } finally {
       setCargando(false);
     }
+  };
+
+  // Segundo envío: actualiza esSocio en la fila ya guardada
+  const elegirYEnviar = (valor) => {
+    if (avanzando) return;
+    setDatos(prev => ({ ...prev, esSocio: valor }));
+    setAvanzando(true);
+    document.activeElement?.blur();
+
+    fetch(ENDPOINT, {
+      method:  'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:    JSON.stringify({
+        tipo:      'actualizarSocio',
+        cedula:    datos.cedula.trim(),
+        esSocio:   valor,
+        apiSecret: API_SECRET,
+      }),
+      mode: 'no-cors',
+    }).catch(() => {});
+
+    setTimeout(() => {
+      setEsSocioEnviado(valor === 'Sí');
+      setEnviado(true);
+      setAvanzando(false);
+    }, 280);
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -307,42 +341,18 @@ export default function Registros() {
 
       <Logo />
 
-      {/* Intro */}
       <p className="mt-5 text-center text-slate-500 text-sm max-w-xs leading-relaxed">
         Te hacemos unas preguntas rápidas para derivarte con un asesor.
       </p>
 
-      {/* Card */}
       <div className="mt-6 w-full max-w-sm">
         <div className="bg-white rounded-2xl shadow-lg shadow-slate-200/60 border border-slate-100 px-6 py-7">
 
           <BarraProgreso paso={paso} />
 
-          {/* ── Paso 0: ¿Es socio? ────────────────────────────────────── */}
+          {/* ── Paso 0: Jubilado / Pensionista ────────────────────────── */}
           {paso === 0 && (
             <div key="paso0" className="step-in">
-              <h1 className="text-xl font-bold text-slate-900 mb-1.5 leading-snug">
-                ¿Sos socio/a de la Cooperativa de la Previsión Social?
-              </h1>
-              <p className="text-slate-400 text-sm mb-6">
-                Elegí la opción que mejor describe tu situación.
-              </p>
-              <div className="flex flex-col gap-3">
-                {['Sí', 'No'].map(op => (
-                  <BtnOpcion
-                    key={op}
-                    label={op}
-                    seleccionado={datos.esSocio === op}
-                    onClick={() => elegir('esSocio', op)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── Paso 1: Jubilado / Pensionista ────────────────────────── */}
-          {paso === 1 && (
-            <div key="paso1" className="step-in">
               <h1 className="text-xl font-bold text-slate-900 mb-1.5 leading-snug">
                 ¿Sos jubilado/a o pensionista?
               </h1>
@@ -362,9 +372,9 @@ export default function Registros() {
             </div>
           )}
 
-          {/* ── Paso 2: ¿Qué buscás? ─────────────────────────────────── */}
-          {paso === 2 && (
-            <div key="paso2" className="step-in">
+          {/* ── Paso 1: ¿Qué buscás? ─────────────────────────────────── */}
+          {paso === 1 && (
+            <div key="paso1" className="step-in">
               <h1 className="text-xl font-bold text-slate-900 mb-1.5 leading-snug">
                 ¿Qué buscás?
               </h1>
@@ -384,8 +394,8 @@ export default function Registros() {
             </div>
           )}
 
-          {/* ── Paso 3: Datos de contacto ─────────────────────────────── */}
-          {paso === 3 && (
+          {/* ── Paso 2: Datos de contacto ─────────────────────────────── */}
+          {paso === 2 && (
             <div key="paso2" className="step-in">
               <h1 className="text-xl font-bold text-slate-900 mb-1.5 leading-snug">
                 ¿Cómo te contactamos?
@@ -410,6 +420,15 @@ export default function Registros() {
                   value={datos.celular}
                   onChange={actualizar('celular')}
                   error={errores.celular}
+                  maxLength={9}
+                />
+                <CampoTexto
+                  label="Cédula de identidad"
+                  inputMode="numeric"
+                  placeholder="Ej: 12345678"
+                  value={datos.cedula}
+                  onChange={actualizar('cedula')}
+                  error={errores.cedula}
                   maxLength={9}
                 />
                 <div>
@@ -471,7 +490,6 @@ export default function Registros() {
                 </div>
               </div>
 
-              {/* Error de envío */}
               {errorEnvio && (
                 <div className="mt-5 flex items-center gap-2.5 text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
                   <AlertCircle size={16} className="shrink-0" />
@@ -479,22 +497,21 @@ export default function Registros() {
                 </div>
               )}
 
-              {/* Widget invisible de Turnstile */}
               <div ref={containerRef} className="flex justify-center mt-2" />
 
               <button
                 type="button"
-                onClick={enviar}
+                onClick={enviarDatos}
                 disabled={cargando || (TURNSTILE_SITE_KEY && !turnstileToken)}
                 className="mt-6 w-full bg-sky-600 hover:bg-sky-500 disabled:bg-sky-300 disabled:cursor-not-allowed text-white font-bold text-base py-4 rounded-2xl transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-2 shadow-lg shadow-sky-100"
               >
                 {cargando ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
-                    Enviando...
+                    Guardando...
                   </>
                 ) : (
-                  'Enviar consulta'
+                  'Continuar'
                 )}
               </button>
 
@@ -503,11 +520,32 @@ export default function Registros() {
               </p>
             </div>
           )}
-        </div>
 
+          {/* ── Paso 3: ¿Es socio? ────────────────────────────────────── */}
+          {paso === 3 && (
+            <div key="paso3" className="step-in">
+              <h1 className="text-xl font-bold text-slate-900 mb-1.5 leading-snug">
+                ¿Sos socio/a de la Cooperativa de la Previsión Social?
+              </h1>
+              <p className="text-slate-400 text-sm mb-6">
+                Elegí la opción que mejor describe tu situación.
+              </p>
+              <div className="flex flex-col gap-3">
+                {['Sí', 'No'].map(op => (
+                  <BtnOpcion
+                    key={op}
+                    label={op}
+                    seleccionado={datos.esSocio === op}
+                    onClick={() => elegirYEnviar(op)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
       </div>
 
-      {/* Pie */}
       <p className="mt-10 text-slate-400 text-xs text-center max-w-xs leading-relaxed">
         Esta página es propiedad de Canselion SRL. Los datos ingresados son
         confidenciales y se utilizan exclusivamente para brindar información

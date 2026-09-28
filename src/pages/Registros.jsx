@@ -298,6 +298,8 @@ export default function Registros() {
         body:    JSON.stringify(payload),
         mode:    'no-cors',
       });
+      // Meta Pixel: solo el evento, sin datos personales
+      window.fbq?.('track', 'Lead');
       setPaso(3);
     } catch {
       setErrorEnvio('No pudimos guardar tu consulta. Por favor intentá nuevamente.');
